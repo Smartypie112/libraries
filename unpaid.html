@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unpaid Users</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/js/all.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Poppins", sans-serif; }
+    body {
+      height: 100vh; background: #f5f5f5;
+      display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+    }
+    .card-container { width: 100%; max-width: 400px; padding: 20px; overflow-y: auto; flex: 1; max-height:100vh; }
+
+    .card {
+      background: linear-gradient(135deg, #ff4d4d, #ff6666);
+      border-radius: 16px; padding: 16px 20px; margin-bottom: 15px;
+      display: flex; justify-content: space-between; align-items: center;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); color: #fff;
+    }
+
+    .info { display: flex; flex-direction: column; }
+    .label { font-size: 0.8rem; opacity: 0.8; }
+    .time { font-size: 1.5rem; font-weight: 600; }
+    .repeat { font-size: 0.8rem; opacity: 0.8; }
+    .buttons { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+    .buttons a {
+      background: #fff; color:black; padding: 6px 10px;
+      border-radius: 8px; text-decoration: none; font-weight: 600;
+      font-size: 0.9rem; display: flex; align-items: center; gap: 6px;
+      transition: 0.2s;
+    }
+    .buttons a:hover { opacity: 0.85; transform: translateY(-2px); }
+
+    .power-btn {
+      background: #fff; color: #28a745; border: none; border-radius: 50%;
+      width: 50px; height: 50px; display: flex; justify-content: center; align-items: center;
+      font-size: 1.2rem; cursor: pointer; transition: 0.2s;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+    .power-btn:hover { transform: scale(1.05); }
+
+    .delete-btn { background: #ff4d4d; color: #fff; }
+
+    .search-box {
+      position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+      display: flex; align-items: center; background: #fff;
+      border-radius: 50px; padding: 10px 20px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      width: 320px;
+    }
+    .search-box input { flex: 1; border: none; outline: none; font-size: 0.95rem; color: #333; }
+    .search-box input::placeholder { color: #aaa; font-size: 0.9rem; }
+
+    /* Modal */
+    .modal-bg {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      display: none; justify-content: center; align-items: center;
+    }
+    .modal {
+      background: #fff; padding: 20px; border-radius: 16px;
+      width: 90%; max-width: 350px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .modal p { font-size: 1rem; font-weight: 500; color: #333; }
+    .modal-buttons {
+      display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;
+    }
+    .modal button {
+      padding: 8px 14px; border: none; border-radius: 8px;
+      cursor: pointer; font-weight: 600; font-size: 0.9rem;
+    }
+    .modal button.submit { background: #34c759; color: #fff; }
+    .modal button.cancel { background: #ccc; color: #333; }
+  </style>
+</head>
+<body>
+  <div class="card-container" id="userCards" style="padding-top: 80px;">
+    <!-- Cards will be loaded here -->
+  </div>
+
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="Search unpaid users..." onkeyup="filterUsers()">
+  </div>
+
+  <!-- Activate Premium Modal -->
+  <div class="modal-bg" id="activateModalBg">
+    <div class="modal">
+      <p>Do you want to activate premium for this user?</p>
+      <div class="modal-buttons">
+        <button class="cancel" onclick="hideActivateModal()">No</button>
+        <button class="submit" id="confirmActivateBtn">Yes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete User Modal -->
+  <div class="modal-bg" id="deleteModalBg">
+    <div class="modal">
+      <p id="deleteText">Do you want to delete this user?</p>
+      <div class="modal-buttons">
+        <button class="cancel" onclick="hideDeleteModal()">No</button>
+        <button class="submit" id="confirmDeleteBtn">Yes</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+let usersData = JSON.parse(localStorage.getItem("usersData")) 
+  
+let activateUser = null;
+    let deleteUserName = null;
+
+    function saveData() {
+      localStorage.setItem("usersData", JSON.stringify(usersData));
+    }
+
+    function renderUsers(users) {
+      const container = document.getElementById("userCards");
+      container.innerHTML = "";
+      const unpaidUsers = users.filter(u => !u.premium);
+
+      unpaidUsers.forEach(user => {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+          <div class="info">
+            <span class="label">Unpaid</span>
+            <span class="time">${user.username}</span>
+            <span class="repeat">Phone: ${user.phone}</span>
+            <div class="buttons">
+              <a href="tel:${user.phone}"><i class="fas fa-phone"></i> Call</a>
+              <a href="https://wa.me/+91 ${user.phone.replace(/\D/g,'')}" target="_blank"><i class="fab fa-whatsapp"></i> WhatsApp</a>
+            </div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <button class="power-btn" onclick="showActivateModal('${user.username}')">
+              <i class="fas fa-power-off"></i>
+            </button>
+            <button class="power-btn delete-btn" onclick="showDeleteModal('${user.username}')">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      if (unpaidUsers.length === 0) {
+        container.innerHTML = "<p style='text-align:center; margin-top:20px; color:#555;'>All users have paid!</p>";
+      }
+    }
+
+    function filterUsers() {
+      const search = document.getElementById("searchInput").value.toLowerCase();
+      const filtered = usersData.filter(u => !u.premium && (u.username.toLowerCase().includes(search) || u.phone.includes(search)));
+      renderUsers(filtered);
+    }
+
+    // Activate Premium
+    function showActivateModal(username) {
+      activateUser = username;
+      document.getElementById("activateModalBg").style.display = "flex";
+    }
+    function hideActivateModal() {
+      activateUser = null;
+      document.getElementById("activateModalBg").style.display = "none";
+    }
+    document.getElementById("confirmActivateBtn").onclick = () => {
+      if (activateUser) {
+        const user = usersData.find(u => u.username === activateUser);
+        if (user) {
+          user.premium = true;
+          saveData();
+          renderUsers(usersData);
+        }
+        hideActivateModal();
+      }
+    };
+
+    // Delete User
+    function showDeleteModal(username) {
+      deleteUserName = username;
+      document.getElementById("deleteText").innerText = `Do you want to delete ${username}?`;
+      document.getElementById("deleteModalBg").style.display = "flex";
+    }
+
+    function hideDeleteModal() {
+      deleteUserName = null;
+      document.getElementById("deleteModalBg").style.display = "none";
+    }
+
+    document.getElementById("confirmDeleteBtn").onclick = () => {
+      if (deleteUserName) {
+        usersData = usersData.filter(u => u.username !== deleteUserName);
+        saveData();
+        renderUsers(usersData);
+        hideDeleteModal();
+      }
+    };
+  
+// Initial render
+    renderUsers(usersData);
+    
+  </script>
+</body>
+</html>
+      

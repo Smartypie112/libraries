@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Premium Users</title>
+
+  <!-- Fonts & Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/js/all.min.js"></script>
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Poppins", sans-serif; }
+    body {
+      height: 100vh; background: #f5f5f5;
+      display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+    }
+
+    /* Cards */
+    .card-container {
+      width: 100%; max-width: 400px; padding: 20px;
+      overflow-y: auto; flex: 1; max-height: 100vh;
+      padding-top: 80px;
+    }
+    .card {
+      background: linear-gradient(135deg, #7fffd4, #adff2f);
+      border-radius: 16px; padding: 16px 20px; margin-bottom: 15px;
+      display: flex; justify-content: space-between; align-items: center;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); color: #fff;
+    }
+    .info { display: flex; flex-direction: column; }
+    .label { font-size: 0.8rem; opacity: 0.8; }
+    .time { font-size: 1.5rem; font-weight: 600; }
+    .repeat { font-size: 0.8rem; opacity: 0.8; }
+
+    /* Search bar */
+    .search-box {
+      position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+      display: flex; align-items: center; background: #fff;
+      border-radius: 50px; padding: 10px 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      width: 320px;
+    }
+    .search-box input {
+      flex: 1; border: none; outline: none;
+      font-size: 0.95rem; color: #333;
+    }
+    .search-box input::placeholder { color: #aaa; font-size: 0.9rem; }
+    .search-box button {
+      background: linear-gradient(135deg, #7fffd4, #adff2f);
+      border: none; outline: none; color: white;
+      min-width: 38px; height: 38px; border-radius: 50%;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; margin-left: -12vw;
+    }
+
+    /* Modals */
+    .modal-bg {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      display: none; justify-content: center; align-items: center;
+    }
+    .modal {
+      background: #fff; padding: 20px; border-radius: 16px;
+      width: 90%; max-width: 350px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .modal label { font-size: 0.9rem; }
+    .modal input[type="text"] {
+      padding: 10px; font-size: 1rem; border: 1px solid #ccc;
+      border-radius: 8px; outline: none;
+    }
+    .modal-buttons {
+      display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;
+    }
+    .modal button {
+      padding: 8px 14px; border: none; border-radius: 8px;
+      cursor: pointer; font-weight: 600; font-size: 0.9rem;
+    }
+    .modal button.submit { background: #34c759; color: #fff; }
+    .modal button.cancel { background: #ccc; color: #333; }
+  </style>
+</head>
+<body>
+
+  <!-- User Cards -->
+  <div class="card-container" id="userCards"></div>
+
+  <!-- Search & Add -->
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="Type to search..." onkeyup="filterUsers()">
+    <button onclick="showModal()"><i class="fas fa-user-plus"></i></button>
+  </div>
+
+  <!-- Cancel Subscription Modal -->
+  <div class="modal-bg" id="cancelModalBg">
+    <div class="modal">
+      <p style="font-size:1rem; font-weight:500;">Do you want to cancel this user's subscription?</p>
+      <div class="modal-buttons">
+        <button class="cancel" onclick="hideCancelModal()">No</button>
+        <button class="submit" id="confirmCancelBtn">Yes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add User Modal -->
+  <div class="modal-bg" id="modalBg">
+    <div class="modal">
+      <label>Username:</label>
+      <input type="text" id="newUsername" placeholder="Enter username">
+      <label>Phone:</label>
+      <input type="text" id="newPhone" placeholder="Enter phone number">
+      <label>
+        <input type="checkbox" id="newPremium"> Paid user
+      </label>
+      <div class="modal-buttons">
+        <button class="cancel" onclick="hideModal()">Cancel</button>
+        <button class="submit" onclick="addClient()">Add</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // Load from localStorage or use default
+  let usersData = JSON.parse(localStorage.getItem("usersData")) || [];
+  
+    // Save data to localStorage
+  function saveData() {
+    localStorage.setItem("usersData", JSON.stringify(usersData));
+  }
+    // Render only premium users
+  function renderUsers(users) {
+    const container = document.getElementById("userCards");
+    container.innerHTML = "";
+ //   callParentFunction();
+    const paidUsers = users.filter(u => u.premium);
+    const sortedUsers = paidUsers.sort((a, b) =>
+      new Date(b.date || 0) - new Date(a.date || 0)
+    );
+
+    sortedUsers.forEach(user => {
+      const index = usersData.indexOf(user);
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = `
+        <div class="info">
+          <span class="label">Paid Card</span>
+          <span class="time">${user.username}</span>
+          <span class="repeat">${user.date ? new Date(user.date).toLocaleDateString() : ""}</span>
+          <span class="repeat">Phone: ${user.phone}</span>
+        </div>
+        <div class="icon" onclick="showCancelModal(${index})" style="cursor:pointer;">
+          <i class="fas fa-check-circle" style="color:#34c759; font-size:1.5rem;"></i>
+        </div>
+      `;
+      container.appendChild(card);
+    });
+
+    if (paidUsers.length === 0) {
+      container.innerHTML = "<p style='text-align:center; margin-top:20px; color:#555;'>No paid users found.</p>";
+    }
+  }
+    // Cancel subscription modal
+  function showCancelModal(index) {
+    cancelIndex = index;
+    document.getElementById("cancelModalBg").style.display = "flex";
+  }
+  function hideCancelModal() {
+    cancelIndex = null;
+    document.getElementById("cancelModalBg").style.display = "none";
+  }
+  document.getElementById("confirmCancelBtn").onclick = () => {
+    if (cancelIndex !== null) {
+      usersData[cancelIndex].premium = false;
+      usersData[cancelIndex].date = "";
+      saveData();
+      renderUsers(usersData);
+    }
+    hideCancelModal();
+  };
+
+  // Search users
+  function filterUsers() {
+    const search = document.getElementById("searchInput").value.toLowerCase();
+    const filtered = usersData.filter(u =>
+      u.username.toLowerCase().includes(search) || u.phone.includes(search)
+    );
+    renderUsers(filtered);
+  }
+
+  // Add User Modal
+  function showModal() {
+    document.getElementById("modalBg").style.display = "flex";
+  }
+  function hideModal() {
+    document.getElementById("modalBg").style.display = "none";
+    document.getElementById("newUsername").value = "";
+    document.getElementById("newPhone").value = "";
+    document.getElementById("newPremium").checked = false;
+  }
+
+  function addClient() {
+  let username = document.getElementById("newUsername").value.trim();
+  const phone = document.getElementById("newPhone").value.trim();
+  const premium = document.getElementById("newPremium").checked;
+
+  if (!username || !phone) {
+    alert("Please fill out both username and phone number.");
+    return;
+  }
+
+  // Automatically adjust username if it exists
+  let baseName = username;
+  let counter = 2;
+  while (usersData.some(u => u.username.toLowerCase() === username.toLowerCase())) {
+    username = `${baseName}${counter}`;
+    counter++;
+  }
+
+  const date = premium ? new Date().toISOString().split("T")[0] : "";
+  usersData.push({ username, phone, premium, date });
+//  saveData();
+ renderUsers(usersData);
+  hideModal();
+}
+
+  // Initial render
+  renderUsers(usersData);
+
+</script>
+</body>
+</html>
