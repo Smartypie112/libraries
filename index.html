@@ -126,6 +126,11 @@
       });
       element.classList.add('active');
       document.getElementById('contentFrame').src = page;
+
+        // Remove the old iframe and create a new one
+  const content = document.querySelector('.content');
+  content.innerHTML = `<iframe id="contentFrame" src="${page}"></iframe>`;
+
     }
   
   </script>
