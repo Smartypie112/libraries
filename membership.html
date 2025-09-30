@@ -220,9 +220,11 @@
 
   const date = premium ? new Date().toISOString().split("T")[0] : "";
   usersData.push({ username, phone, premium, date });
-//  saveData();
+saveData();
  renderUsers(usersData);
-  hideModal();
+    setTimeout(()=>{
+      hideModal();
+    },500);  
 }
 
   // Initial render
